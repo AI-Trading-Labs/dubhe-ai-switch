@@ -1,4 +1,4 @@
-# Dubhe AI Switch GUI
+# Dubhe AI Switch GUI - with i18n support
 import sys, os, json, threading, time, queue, socket, webbrowser
 from pathlib import Path
 import customtkinter as ctk
@@ -14,6 +14,36 @@ CARD_BG = "#0f172a"
 MUTED = "#64748b"
 GREEN = "#34c759"
 RED = "#e55353"
+
+# i18n strings
+I18N = {
+    "title": {"zh": "Dubhe AI Switch", "en": "Dubhe AI Switch"},
+    "disconnected": {"zh": "\u672a\u8fde\u63a5", "en": "Disconnected"},
+    "connected": {"zh": "\u5df2\u8fde\u63a5", "en": "Connected"},
+    "adapter_running": {"zh": "\u8fd0\u884c\u4e2d", "en": "Adapter Running"},
+    "provider": {"zh": "\u63d0\u4f9b\u5546", "en": "Provider"},
+    "model": {"zh": "\u6a21\u578b", "en": "Model"},
+    "api_key": {"zh": "API Key", "en": "API Key"},
+    "get_key": {"zh": "\u83b7\u53d6 API Key", "en": "Get API Key"},
+    "paste_key": {"zh": "\u7c98\u8d34 API Key...", "en": "Paste your API Key..."},
+    "show": {"zh": "\u663e\u793a", "en": "Show"},
+    "hide": {"zh": "\u9690\u85cf", "en": "Hide"},
+    "start": {"zh": "\u542f\u52a8\u4ee3\u7406", "en": "Start Proxy"},
+    "stop": {"zh": "\u505c\u6b62\u5e76\u8fd8\u539f", "en": "Stop & Restore"},
+    "log": {"zh": "\u65e5\u5fd7", "en": "Log"},
+    "started": {"zh": "\u5df2\u542f\u52a8", "en": "Started"},
+    "stopped": {"zh": "\u5df2\u505c\u6b62 - \u5df2\u8fd8\u539f OpenAI", "en": "Stopped - restored OpenAI config"},
+    "minimized": {"zh": "\u5df2\u6700\u5c0f\u5316\u5230\u7cfb\u7edf\u6258\u76d8", "en": "Minimized to system tray"},
+    "tray_show": {"zh": "\u663e\u793a\u7a97\u53e3", "en": "Show Window"},
+    "tray_exit": {"zh": "\u505c\u6b62\u5e76\u9000\u51fa", "en": "Stop Proxy & Exit"},
+    "err_key_required": {"zh": "\u9519\u8bef\uff1a\u8bf7\u586b\u5199 API Key", "en": "Error: API Key is required"},
+    "err_unknown_provider": {"zh": "\u9519\u8bef\uff1a\u672a\u77e5\u63d0\u4f9b\u5546", "en": "Error: Unknown provider"},
+    "err_start_failed": {"zh": "\u9519\u8bef\uff1a\u542f\u52a8\u5931\u8d25", "en": "Error: Failed to start proxy"},
+}
+
+def t(key, lang):
+    return I18N.get(key, {}).get(lang, key)
+
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
@@ -28,12 +58,17 @@ class App(ctk.CTk):
         self.runner = core.AdapterRunner(log_fn=self._log)
         self.log_queue = queue.Queue()
         self._show_key = False
+        self._lang = "zh"
         self._current_model = ""
         self._current_upstream = ""
         self._build_ui()
         self._load_providers()
         self._pump_log()
         self.after(500, self._check_adapter_status)
+
+    def _L(self, key):
+        return t(key, self._lang)
+
     def _build_ui(self):
         self.grid_columnconfigure(0, weight=1)
         self.grid_rowconfigure(6, weight=1)
@@ -42,12 +77,15 @@ class App(ctk.CTk):
         top.grid_columnconfigure(0, weight=1)
         ctk.CTkLabel(top, text="Dubhe AI Switch", font=ctk.CTkFont(size=20,weight="bold"), text_color=ACCENT2).grid(row=0,column=0,sticky="w")
         ctk.CTkLabel(top, text="v"+VERSION, font=ctk.CTkFont(size=11), text_color=MUTED).grid(row=0,column=1,sticky="e")
+        self.lang_btn = ctk.CTkButton(top, text="EN", width=36, height=24, command=self._toggle_lang,
+            fg_color="transparent", border_width=1, text_color=("#333","#ccc"), font=ctk.CTkFont(size=11))
+        self.lang_btn.grid(row=0, column=2, padx=(4,0))
         sc = ctk.CTkFrame(self, corner_radius=10, fg_color=CARD_BG, border_width=1)
         sc.grid(row=1, column=0, sticky="ew", padx=20, pady=4)
         sc.grid_columnconfigure(2, weight=1)
         self.dot = ctk.CTkLabel(sc, text="\u25cf", font=ctk.CTkFont(size=18), text_color="#666", width=20)
         self.dot.grid(row=0, column=0, padx=(14,4), pady=10)
-        self.status_lbl = ctk.CTkLabel(sc, text="Disconnected", font=ctk.CTkFont(size=13,weight="bold"))
+        self.status_lbl = ctk.CTkLabel(sc, text=self._L("disconnected"), font=ctk.CTkFont(size=13,weight="bold"))
         self.status_lbl.grid(row=0, column=1, sticky="w", pady=10)
         self.model_lbl = ctk.CTkLabel(sc, text="", font=ctk.CTkFont(size=11), text_color=MUTED)
         self.model_lbl.grid(row=0, column=2, sticky="e", padx=(0,14), pady=10)
@@ -56,33 +94,39 @@ class App(ctk.CTk):
         cfg.grid_columnconfigure(0, weight=1)
         r0 = ctk.CTkFrame(cfg, fg_color="transparent")
         r0.pack(fill="x", padx=14, pady=(12,4))
-        ctk.CTkLabel(r0, text="Provider", width=60, anchor="w", text_color=MUTED).pack(side="left")
+        self.l_provider = ctk.CTkLabel(r0, text=self._L("provider"), width=60, anchor="w", text_color=MUTED)
+        self.l_provider.pack(side="left")
         self.provider_menu = ctk.CTkOptionMenu(r0, values=[], command=self._on_provider_change, dynamic_resizing=False)
         self.provider_menu.pack(side="left", padx=(0,6), fill="x", expand=True)
         r1 = ctk.CTkFrame(cfg, fg_color="transparent")
         r1.pack(fill="x", padx=14, pady=4)
-        ctk.CTkLabel(r1, text="Model", width=60, anchor="w", text_color=MUTED).pack(side="left")
+        self.l_model = ctk.CTkLabel(r1, text=self._L("model"), width=60, anchor="w", text_color=MUTED)
+        self.l_model.pack(side="left")
         self.model_menu = ctk.CTkOptionMenu(r1, values=[], dynamic_resizing=False)
         self.model_menu.pack(side="left", padx=(0,6), fill="x", expand=True)
         r2 = ctk.CTkFrame(cfg, fg_color="transparent")
         r2.pack(fill="x", padx=14, pady=4)
-        ctk.CTkLabel(r2, text="API Key", width=60, anchor="w", text_color=MUTED).pack(side="left")
+        self.l_apikey = ctk.CTkLabel(r2, text=self._L("api_key"), width=60, anchor="w", text_color=MUTED)
+        self.l_apikey.pack(side="left")
         self.key_var = ctk.StringVar()
-        self.key_entry = ctk.CTkEntry(r2, textvariable=self.key_var, placeholder_text="Paste your API Key...", show="*")
+        self.key_entry = ctk.CTkEntry(r2, textvariable=self.key_var, placeholder_text=self._L("paste_key"), show="*")
         self.key_entry.pack(side="left", fill="x", expand=True)
-        self.show_btn = ctk.CTkButton(r2, text="Show", width=52, height=28, command=self._toggle_key, fg_color="transparent", border_width=1, text_color=("#333","#ccc"))
+        self.show_btn = ctk.CTkButton(r2, text=self._L("show"), width=52, height=28, command=self._toggle_key,
+            fg_color="transparent", border_width=1, text_color=("#333","#ccc"))
         self.show_btn.pack(side="left", padx=(4,0))
         r3 = ctk.CTkFrame(cfg, fg_color="transparent")
         r3.pack(fill="x", padx=14, pady=(4,12))
-        self.key_url_lbl = ctk.CTkLabel(r3, text="Get API Key", text_color=ACCENT, font=ctk.CTkFont(size=11,underline=True), cursor="hand2")
+        self.key_url_lbl = ctk.CTkLabel(r3, text=self._L("get_key"), text_color=ACCENT, font=ctk.CTkFont(size=11,underline=True), cursor="hand2")
         self.key_url_lbl.pack(side="left")
         self.key_url_lbl.bind("<Button-1>", lambda e: self._open_key_url())
         bf = ctk.CTkFrame(self, fg_color="transparent")
         bf.grid(row=3, column=0, sticky="ew", padx=20, pady=4)
         bf.grid_columnconfigure((0,1), weight=1)
-        self.start_btn = ctk.CTkButton(bf, text="Start Proxy", command=self._start, fg_color=ACCENT, hover_color="#2563eb", height=36, font=ctk.CTkFont(size=14,weight="bold"))
+        self.start_btn = ctk.CTkButton(bf, text=self._L("start"), command=self._start, fg_color=ACCENT,
+            hover_color="#2563eb", height=36, font=ctk.CTkFont(size=14,weight="bold"))
         self.start_btn.grid(row=0, column=0, sticky="ew", padx=(0,4))
-        self.stop_btn = ctk.CTkButton(bf, text="Stop & Restore", command=self._stop, fg_color=RED, hover_color="#c43838", height=36, font=ctk.CTkFont(size=14,weight="bold"), state="disabled")
+        self.stop_btn = ctk.CTkButton(bf, text=self._L("stop"), command=self._stop, fg_color=RED,
+            hover_color="#c43838", height=36, font=ctk.CTkFont(size=14,weight="bold"), state="disabled")
         self.stop_btn.grid(row=0, column=1, sticky="ew", padx=(4,0))
         lc = ctk.CTkFrame(self, corner_radius=10, fg_color=CARD_BG, border_width=1)
         lc.grid(row=4, rowspan=2, column=0, sticky="nsew", padx=20, pady=4)
@@ -91,13 +135,29 @@ class App(ctk.CTk):
         lh = ctk.CTkFrame(lc, fg_color="transparent")
         lh.grid(row=0, column=0, sticky="ew", padx=14, pady=(10,4))
         lh.grid_columnconfigure(0, weight=1)
-        ctk.CTkLabel(lh, text="Log", font=ctk.CTkFont(size=12,weight="bold"), text_color=MUTED).grid(row=0, column=0, sticky="w")
+        self.l_log = ctk.CTkLabel(lh, text=self._L("log"), font=ctk.CTkFont(size=12,weight="bold"), text_color=MUTED)
+        self.l_log.grid(row=0, column=0, sticky="w")
         self.log_text = ctk.CTkTextbox(lc, font=ctk.CTkFont(size=11), fg_color="#060a14", text_color="#8a93b0", state="disabled")
         self.log_text.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
+    def _toggle_lang(self):
+        self._lang = "en" if self._lang == "zh" else "zh"
+        self._apply_lang()
+    def _apply_lang(self):
+        self.status_lbl.configure(text=self._L("disconnected"))
+        self.l_provider.configure(text=self._L("provider"))
+        self.l_model.configure(text=self._L("model"))
+        self.l_apikey.configure(text=self._L("api_key"))
+        self.key_url_lbl.configure(text=self._L("get_key"))
+        self.key_entry.configure(placeholder_text=self._L("paste_key"))
+        self.show_btn.configure(text=self._L("show"))
+        self.start_btn.configure(text=self._L("start"))
+        self.stop_btn.configure(text=self._L("stop"))
+        self.l_log.configure(text=self._L("log"))
+        self.lang_btn.configure(text="EN" if self._lang == "zh" else "中")
     def _toggle_key(self):
         self._show_key = not self._show_key
         self.key_entry.configure(show="" if self._show_key else "*")
-        self.show_btn.configure(text="Hide" if self._show_key else "Show")
+        self.show_btn.configure(text=self._L("hide") if self._show_key else self._L("show"))
     def _open_key_url(self):
         url = getattr(self, "_key_url", "")
         if url:
@@ -110,7 +170,7 @@ class App(ctk.CTk):
             if prov["models"]:
                 self.model_menu.set(prov["models"][0])
             self._key_url = prov["key_url"]
-            self.key_url_lbl.configure(text="Get " + prov["label"] + " API Key")
+            self.key_url_lbl.configure(text=self._L("get_key") + " (" + prov["label"] + ")")
             saved = core.get_saved_providers().get(pid, "")
             self.key_var.set(saved)
     def _load_providers(self):
@@ -133,7 +193,7 @@ class App(ctk.CTk):
         model = self.model_menu.get()
         api_key = self.key_var.get().strip()
         if not api_key:
-            self._log("Error: API Key is required")
+            self._log(self._L("err_key_required"))
             return
         if pid.startswith("custom:"):
             idx = int(pid[7:])
@@ -144,7 +204,7 @@ class App(ctk.CTk):
         else:
             prov = core.PROVIDERS.get(pid)
             if not prov:
-                self._log("Error: Unknown provider")
+                self._log(self._L("err_unknown_provider"))
                 return
             self._current_upstream = prov["upstream"]
             core.save_provider_key(pid, api_key)
@@ -154,15 +214,15 @@ class App(ctk.CTk):
             core.backup_config_toml()
             core.apply_codex_config(model)
             if self.runner.start():
+                self._running = True
                 self.start_btn.configure(state="disabled")
                 self.stop_btn.configure(state="normal")
-                self._running = True
                 self._update_status(True, model + " via " + label)
-                self._log("Started: " + model + " via " + label)
+                self._log(self._L("started") + ": " + model + " via " + label)
             else:
-                self._log("Error: Failed to start proxy")
+                self._log(self._L("err_start_failed"))
         except Exception as e:
-            self._log("Error: " + str(e))
+            self._log(self._L("err_start_failed") + ": " + str(e))
     def _stop(self):
         try:
             msg = core.restore_openai()
@@ -174,7 +234,7 @@ class App(ctk.CTk):
         self.start_btn.configure(state="normal")
         self.stop_btn.configure(state="disabled")
         self._update_status(False)
-        self._log("Stopped - restored OpenAI config")
+        self._log(self._L("stopped"))
     def _on_close(self):
         if self._running:
             self.minimize_to_tray()
@@ -183,7 +243,7 @@ class App(ctk.CTk):
     def minimize_to_tray(self):
         self.withdraw()
         self._create_tray()
-        self._log("Minimized to system tray")
+        self._log(self._L("minimized"))
     def _create_tray(self):
         try:
             import pystray
@@ -198,8 +258,8 @@ class App(ctk.CTk):
                 draw.ellipse([8, 8, 56, 56], fill=(59, 130, 246, 255))
                 draw.text((20, 18), "D", fill=(147, 197, 253, 255))
             menu = pystray.Menu(
-                pystray.MenuItem("Show Window", self._show_window, default=True),
-                pystray.MenuItem("Stop Proxy & Exit", self._quit_app),
+                pystray.MenuItem(self._L("tray_show"), self._show_window, default=True),
+                pystray.MenuItem(self._L("tray_exit"), self._quit_app),
             )
             self._tray_icon = pystray.Icon("dubhe-switch", img, "Dubhe AI Switch", menu)
             threading.Thread(target=self._tray_icon.run, daemon=True).start()
@@ -208,9 +268,12 @@ class App(ctk.CTk):
     def _show_window(self):
         self.deiconify()
         self.lift()
-        if self._tray_icon:
-            self._tray_icon.stop()
-            self._tray_icon = None
+        self.focus_force()
+        try:
+            if self._tray_icon:
+                self._tray_icon.stop()
+                self._tray_icon = None
+        except: pass
     def _quit_app(self):
         try:
             if self._running:
@@ -241,13 +304,13 @@ class App(ctk.CTk):
     def _update_status(self, running=False, info=""):
         if running:
             self.dot.configure(text_color=GREEN)
-            self.status_lbl.configure(text="Connected")
+            self.status_lbl.configure(text=self._L("connected"))
             self.model_lbl.configure(text=info)
         else:
             self.dot.configure(text_color="#666")
-            self.status_lbl.configure(text="Disconnected")
+            self.status_lbl.configure(text=self._L("disconnected"))
             self.model_lbl.configure(text="")
     def _check_adapter_status(self):
         if core.adapter_running():
-            self._update_status(True, "Adapter Running")
+            self._update_status(True, self._L("adapter_running"))
         self.after(5000, self._check_adapter_status)
