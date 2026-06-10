@@ -173,6 +173,18 @@ class App(ctk.CTk):
             self.key_url_lbl.configure(text=self._L("get_key") + " (" + prov["label"] + ")")
             saved = core.get_saved_providers().get(pid, "")
             self.key_var.set(saved)
+        elif pid.startswith("custom:"):
+            idx = int(pid[7:])
+            items = core.load_custom()
+            if idx < len(items):
+                cp = items[idx]
+                self.model_menu.configure(values=[cp["model"]])
+                self.model_menu.set(cp["model"])
+                self._key_url = cp.get("key_url", "")
+                self.key_url_lbl.configure(text=self._L("get_key") + " (" + cp["label"] + ")")
+                self.key_var.set(cp.get("api_key", ""))
+            else:
+                self._key_url = ""
     def _load_providers(self):
         self._pid_for_label = {}
         labels = []

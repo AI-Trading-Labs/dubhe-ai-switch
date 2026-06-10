@@ -46,33 +46,51 @@ CODEX_TOML_FIELDS = {
 PROVIDERS: dict[str, dict] = {}
 
 PRESETS = [
-    {"label": "智谱", "model": "glm-4-plus",
+    {"label": "DeepSeek", "model": "deepseek-v4-flash",
+     "upstream": "https://api.deepseek.com/chat/completions",
+     "key_url": "https://platform.deepseek.com"},
+    {"label": "智谱 (GLM)", "model": "glm-4-plus",
      "upstream": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
      "key_url": "https://open.bigmodel.cn"},
-    {"label": "智谱", "model": "glm-4-air",
-     "upstream": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-     "key_url": "https://open.bigmodel.cn"},
-    {"label": "通义", "model": "qwen-max",
+    {"label": "通义千问 (Qwen)", "model": "qwen-max",
      "upstream": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
      "key_url": "https://dashscope.console.aliyun.com"},
-    {"label": "通义", "model": "qwen-plus",
-     "upstream": "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-     "key_url": "https://dashscope.console.aliyun.com"},
-    {"label": "零一", "model": "yi-large",
-     "upstream": "https://api.lingyiwanwu.com/v1/chat/completions",
-     "key_url": "https://platform.lingyiwanwu.com"},
-    {"label": "豆包", "model": "doubao-1-5-pro-32k",
-     "upstream": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-     "key_url": "https://console.volcengine.com"},
+    {"label": "MiniMax", "model": "MiniMax-M3",
+     "upstream": "https://api.minimax.chat/v1/chat/completions",
+     "key_url": "https://platform.minimax.com"},
+    {"label": "Kimi (Moonshot)", "model": "kimi-k2-0711-preview",
+     "upstream": "https://api.moonshot.cn/v1/chat/completions",
+     "key_url": "https://platform.kimi.com"},
+    {"label": "DeepInfra", "model": "meta-llama/Llama-4-Maverick-17B-128E-Instruct",
+     "upstream": "https://api.deepinfra.com/v1/openai/chat/completions",
+     "key_url": "https://deepinfra.com"},
+    {"label": "OpenRouter", "model": "openai/gpt-4o",
+     "upstream": "https://openrouter.ai/api/v1/chat/completions",
+     "key_url": "https://openrouter.ai/keys"},
     {"label": "Groq", "model": "llama-3.3-70b-versatile",
      "upstream": "https://api.groq.com/openai/v1/chat/completions",
      "key_url": "https://console.groq.com"},
-    {"label": "Mistral", "model": "mistral-large-latest",
+    {"label": "Mistral AI", "model": "mistral-large-latest",
      "upstream": "https://api.mistral.ai/v1/chat/completions",
      "key_url": "https://console.mistral.ai"},
-    {"label": "OpenRouter", "model": "anthropic/claude-3.5-sonnet",
-     "upstream": "https://openrouter.ai/api/v1/chat/completions",
-     "key_url": "https://openrouter.ai"},
+    {"label": "火山引擎 (豆包)", "model": "doubao-1-5-pro-32k",
+     "upstream": "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+     "key_url": "https://console.volcengine.com"},
+    {"label": "零一万物 (Yi)", "model": "yi-large",
+     "upstream": "https://api.lingyiwanwu.com/v1/chat/completions",
+     "key_url": "https://platform.lingyiwanwu.com"},
+    {"label": "百川智能", "model": "Baichuan4",
+     "upstream": "https://api.baichuan-ai.com/v1/chat/completions",
+     "key_url": "https://platform.baichuan-ai.com"},
+    {"label": "阶跃星辰", "model": "step-2-16k",
+     "upstream": "https://api.stepfun.com/v1/chat/completions",
+     "key_url": "https://platform.stepfun.com"},
+    {"label": "NVIDIA NIM", "model": "deepseek-ai/deepseek-v4-flash",
+     "upstream": "https://integrate.api.nvidia.com/v1/chat/completions",
+     "key_url": "https://build.nvidia.com"},
+    {"label": "Together AI", "model": "mistralai/Mixtral-8x22B-Instruct-v0.1",
+     "upstream": "https://api.together.xyz/v1/chat/completions",
+     "key_url": "https://together.ai"},
     {"label": "自定义", "model": "", "upstream": "", "key_url": ""},
 ]
 
@@ -167,19 +185,49 @@ def register_provider(pid: str, label: str, upstream: str, key_url: str, models:
 def register_defaults():
     register_provider("deepseek", "DeepSeek", "https://api.deepseek.com/chat/completions",
                       "https://platform.deepseek.com",
-                      ["deepseek-v4-pro", "deepseek-v4-flash"])
-    register_provider("kimi", "Kimi", "https://api.moonshot.cn/v1/chat/completions",
+                      ["deepseek-v4-flash", "deepseek-v4-pro", "deepseek-v3.2", "deepseek-r1-distill-qwen-32b"])
+    register_provider("zhipu", "智谱 (GLM)", "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+                      "https://open.bigmodel.cn",
+                      ["glm-4-plus", "glm-4-air", "glm-4-flash", "glm-4.7-flash", "glm-5.1"])
+    register_provider("tongyi", "通义千问 (Qwen)", "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+                      "https://dashscope.console.aliyun.com",
+                      ["qwen-max", "qwen-plus", "qwen-turbo", "qwen3-235b", "qwen3-30b-a3b"])
+    register_provider("minimax", "MiniMax", "https://api.minimax.chat/v1/chat/completions",
+                      "https://platform.minimax.com",
+                      ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M1"])
+    register_provider("kimi", "Kimi (Moonshot)", "https://api.moonshot.cn/v1/chat/completions",
                       "https://platform.kimi.com",
                       ["kimi-k2-0711-preview", "moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"])
-    register_provider("zhipu", "智谱", "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-                      "https://open.bigmodel.cn",
-                      ["glm-4-plus", "glm-4-air", "glm-4-flash"])
-    register_provider("tongyi", "通义", "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
-                      "https://dashscope.console.aliyun.com",
-                      ["qwen-max", "qwen-plus", "qwen-turbo"])
+    register_provider("deepinfra", "DeepInfra", "https://api.deepinfra.com/v1/openai/chat/completions",
+                      "https://deepinfra.com",
+                      ["meta-llama/Llama-4-Maverick-17B-128E-Instruct", "mistralai/Mixtral-8x22B-Instruct-v0.1"])
     register_provider("openrouter", "OpenRouter", "https://openrouter.ai/api/v1/chat/completions",
                       "https://openrouter.ai/keys",
-                      ["anthropic/claude-3.5-sonnet", "openai/gpt-4o", "google/gemini-2.0-flash"])
+                      ["openai/gpt-4o", "anthropic/claude-sonnet-4", "google/gemini-2.5-pro", "deepseek/deepseek-v4-flash", "qwen/qwen-max", "meta-llama/llama-4-maverick"])
+    register_provider("groq", "Groq", "https://api.groq.com/openai/v1/chat/completions",
+                      "https://console.groq.com",
+                      ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-32b"])
+    register_provider("mistral", "Mistral AI", "https://api.mistral.ai/v1/chat/completions",
+                      "https://console.mistral.ai",
+                      ["mistral-large-latest", "mistral-small-latest", "codestral-latest"])
+    register_provider("volcengine", "火山引擎 (豆包)", "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+                      "https://console.volcengine.com",
+                      ["doubao-1-5-pro-32k", "doubao-1-5-lite-32k"])
+    register_provider("lingyi", "零一万物 (Yi)", "https://api.lingyiwanwu.com/v1/chat/completions",
+                      "https://platform.lingyiwanwu.com",
+                      ["yi-large", "yi-medium", "yi-lightning"])
+    register_provider("baichuan", "百川智能", "https://api.baichuan-ai.com/v1/chat/completions",
+                      "https://platform.baichuan-ai.com",
+                      ["Baichuan4", "Baichuan3-Turbo"])
+    register_provider("stepfun", "阶跃星辰", "https://api.stepfun.com/v1/chat/completions",
+                      "https://platform.stepfun.com",
+                      ["step-2-16k", "step-1v-32k"])
+    register_provider("nvidia", "NVIDIA NIM", "https://integrate.api.nvidia.com/v1/chat/completions",
+                      "https://build.nvidia.com",
+                      ["deepseek-ai/deepseek-v4-flash", "nvidia/nemotron-3-super-120b-a12b", "meta/llama-4-maverick-17b-128e-instruct"])
+    register_provider("together", "Together AI", "https://api.together.xyz/v1/chat/completions",
+                      "https://together.ai",
+                      ["mistralai/Mixtral-8x22B-Instruct-v0.1", "meta-llama/Llama-3.3-70B-Instruct-Turbo"])
 
 register_defaults()
 
